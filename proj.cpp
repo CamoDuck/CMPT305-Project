@@ -39,19 +39,80 @@ enum IType {
 
 class Instruction {
     public:
-        string address;
+        long address;
         int type; 
-        int stage = 0; // current pipeline stage
-        vector<string> deps;
+        int stage; // current pipeline stage
+        vector<long> deps; // Instructions that I depend on 
+        queue<Instruction*> depQ; // Instructions that depend on me
 
-        Instruction(string, int, int, string [], int);
+        Instruction(long, int, long [], int);
+        void FreeDepQ();
+
 };
-Instruction::Instruction(string address, int type, int stage, string deps[], int depsSize) {
+Instruction::Instruction(long address, int type, long deps[], int depsSize) {
     this->address = address;
     this->type = type;
-    this->stage = stage;
+    this->stage = 0;
     this->deps.insert(this->deps.end(), &deps[0], &deps[depsSize]);
 }
+
+// Frees dependecies that were depending on this instruction (called during EX or MEM stage)
+void Instruction::FreeDepQ() {
+    while (depQ.size() != 0) {
+        Instruction* I = depQ.front();
+        depQ.pop();
+        
+        // get rid of fulfilled dependencies in other instructions
+        I->deps.erase(std::remove(I->deps.begin(), I->deps.end(), address), I->deps.end());
+    }
+}
+
+// a single pipeline
+class PipeLine {
+    public:
+        Instruction* getIF() {return IList[0];}
+        Instruction* getID() {return IList[1];}
+        Instruction* getEX() {return IList[2];}
+        Instruction* getMEM() {return IList[3];}
+        Instruction* getWB() {return IList[4];}
+
+        void moveTrace(); // move trace to IF (if possible)
+        void moveIF();  // move IF to ID and calls moveTrace() if it succeeds.
+        void moveID(); // move ID to EX and calls moveIF() if it succeeds.
+        void moveEX(); // 
+        void moveMEM(); // 
+        void moveWB(); // 
+
+        void tick(); // need to call every clock cycle to update pipeline
+    private:
+        Instruction* IList[5] = {NULL,NULL,NULL,NULL,NULL};;
+};
+void PipeLine::tick() {
+    moveWB();
+}
+void PipeLine::moveWB() {
+    bool success = false;
+
+    // check for dependencies etc
+
+    if (success) {
+        moveMEM();
+    }
+}
+void PipeLine::moveMEM() {
+    bool success = false;
+
+    // check for dependencies etc
+
+    if (success) {
+        moveEX();
+    }
+}
+void PipeLine::moveTrace() {}
+void PipeLine::moveIF() {}
+void PipeLine::moveID() {}
+void PipeLine::moveEX() {}
+
 
 /////////////////////////////////////
 //        Global Variables         //
@@ -60,7 +121,7 @@ long current_cycle = 0;
 long instTypeCount[] = {0,0,0,0,0}; // number of each instruction types ran [intI, floatI, branchI, loadI, storeI]
 
 
-unordered_map<long, queue<Instruction*>> DepMap; // Dependencies map 
+unordered_map<long, queue<Instruction*>*> DepMap; // Dependencies map 
 /*  Every time a new instruction (lets call this A) is loaded (IF) its address will be saved as
     key along with an empty queue. Then when ever a new instruction (lets call this B) 
     that has a dependency for instruction "A" is loaded (IF) a pointer to instruction "B"
@@ -69,15 +130,12 @@ unordered_map<long, queue<Instruction*>> DepMap; // Dependencies map
     address of "A".
 */ 
 
-queue<Instruction> IF_Q; // instruction fetch queue
-queue<Instruction> ID_Q; // instruction decode queue
-queue<Instruction> WB_Q; // write back queue
-
-queue<Instruction> Int_Q; // Integer ALU unit queue (used in EX stage)
-queue<Instruction> Float_Q; // floating point unit queue (used in EX stage)
-queue<Instruction> Branch_Q; // branch execution unit queue (used in EX stage)
-queue<Instruction> Load_Q; // L1 read port queue (used in MEM stage)
-queue<Instruction> Store_Q; // L1 write port queue (used in MEM stage)
+// current use status of units
+bool ALUOpen = true;
+bool FPUOpen = true;
+bool BranchOpen = true;
+bool ReadOpen = true;
+bool WriteOpen = true;
 
 /////////////////////////////////////
 //           Functions             //
@@ -85,137 +143,90 @@ queue<Instruction> Store_Q; // L1 write port queue (used in MEM stage)
 
 
 // create new dependency tracker (See DepMap for better explanation)
-// void createDep(Instruction &I) {
-//     queue<Instruction*> Q = *(new queue<Instruction*>);
-//     DepMap[I.address] = Q;
-// }
+void createDep(Instruction &I) {
+    DepMap[I.address] = &I.depQ;
+}
 
 // add to an existing dependency list (See DepMap for better explanation)
-// void addDep(Instruction &I) { 
-//     vector<long>::iterator i = I.deps.begin();
-//     while (i != I.deps.end()) {
-//         long address = I.deps.at(0);
-//         // if dependency exists add instruction to it
-//         if (DepMap.find(address) != DepMap.end()) {
-//             DepMap.at(address).push(&I);
-//             ++i;
-//         }
-//         else { // else dependency has already been fulfilled
-//             // remove dependency from instruction dependencies
-//             I.deps.erase(i++); 
-//         }
-//     }
-// }
+void addDep(Instruction &I) { 
+    vector<long>::iterator i = I.deps.begin();
+    while (i != I.deps.end()) {
+        long address = I.deps.at(0);
+        // if dependency exists add instruction to it
+        if (DepMap.find(address) != DepMap.end()) {
+            DepMap.at(address)->push(&I);
+            ++i;
+        }
+        else { // else dependency has already been fulfilled
+            // remove dependency from instruction dependencies
+            I.deps.erase(i++); 
+        }
+    }
+}
 
 // delete dependency tracker (See DepMap for better explanation)
 // void deleteDep(long address) {
-//     queue<Instruction*> depender_Q = DepMap.at(address);
-//     while (depender_Q.size() != 0) {
-//         Instruction* I = depender_Q.front();
-//         depender_Q.pop();
+//     if (DepMap.count(address) == 0) {return;} // if key does not exist return
+
+//     queue<Instruction*>* depender_Q = DepMap.at(address);
+//     while (depender_Q->size() != 0) {
+//         Instruction* I = depender_Q->front();
+//         depender_Q->pop();
 //         // get rid of fulfilled dependencies 
 //         I->deps.erase(std::remove(I->deps.begin(), I->deps.end(), address), I->deps.end());
 //     }
-//     delete &depender_Q;
 // }
 
 // Read next instruction from file and return it
-void readNextWI(std::ifstream& ifile, int W) {
-    // reads file line by line
-    // then reads line separated by comma and pushes to vector to read from
-    for(int i = 0; i < W; i++) {
-        std::string trace_file_line;
-        if(!std::getline(ifile, trace_file_line)) break;
+// void readNextWI(std::ifstream& ifile, int W) {
+//     // reads file line by line
+//     // then reads line separated by comma and pushes to vector to read from
+//     for(int i = 0; i < W; i++) {
+//         std::string trace_file_line;
+//         if(!std::getline(ifile, trace_file_line)) break;
 
-        std::stringstream ss(trace_file_line);
-        std::vector<std::string> vect;
-        while(ss) {
-            std::string s;
-            if (!getline(ss, s, ',')) break;
-            vect.push_back(s);
-        }
+//         std::stringstream ss(trace_file_line);
+//         std::vector<std::string> vect;
+//         while(ss) {
+//             std::string s;
+//             if (!getline(ss, s, ',')) break;
+//             vect.push_back(s);
+//         }
 
-        // for(std::size_t j = 0; j < vect.size(); j++)
-        //     std::cout << vect[j] << " ";
+//         // for(std::size_t j = 0; j < vect.size(); j++)
+//         //     std::cout << vect[j] << " ";
 
-        Instruction instruction = Instruction(vect[0], stoi(vect[1]), 0, {}, 0);
-        // move instruction to IF
+//         Instruction instruction = Instruction(strtol(vect[0], NULL, 16), stoi(vect[1]), 0, {}, 0);
+//         // move instruction to IF
         
-        // std::cout << std::endl;
-    }
-}
+//         // std::cout << std::endl;
+//     }
+// }
 
-Instruction readNextI(std::ifstream& ifile) {
-    // reads file line by line
-    // then reads line separated by comma and pushes to vector to read from
-    vector<Instruction> data;
-    std::string trace_file_line;
-    std::getline(ifile, trace_file_line);
+// Instruction readNextI(std::ifstream& ifile) {
+//     // reads file line by line
+//     // then reads line separated by comma and pushes to vector to read from
+//     vector<Instruction> data;
+//     std::string trace_file_line;
+//     std::getline(ifile, trace_file_line);
 
-    std::stringstream ss(trace_file_line);
-    std::vector<std::string> vect;
-    while(ss) {
-        std::string s;
-        if (!getline(ss, s, ',')) break;
-        vect.push_back(s);
-    }
+//     std::stringstream ss(trace_file_line);
+//     std::vector<std::string> vect;
+//     while(ss) {
+//         std::string s;
+//         if (!getline(ss, s, ',')) break;
+//         vect.push_back(s);
+//     }
 
-    Instruction instruction = Instruction(vect[0], stoi(vect[1]), 0, {}, 0);
-    return instruction;
-}
-
-bool TraceToIF() {
-
-    return false;
-}
-
-void StartIF() {
-
-}
-
-bool IFToID() {
-    return false;
-}
-
-void StartID() {}
-
-bool IDToEX() {
-    return false;
-}
-
-void StartEX() {}
-
-bool EXtoMEM() {
-    return false;
-}
-
-void StartMEM() {}
-
-bool MEMToWB() {
-    return false;
-}
-
-void StartWB() {}
-
-bool WBToRetire() {
-    return false;
-}
+//     Instruction instruction = Instruction(strtol(vect[0], NULL, 16), stoi(vect[1]), 0, {}, 0);
+//     return instruction;
+// }
 
 // Main simulator function
 void Simulation(std::ifstream& ifile, int startInst, int InstNum, int W) {
     // instructions in WB retire and leave the pipeline (and the instruction window)
     for(int i = 0; i < 1000; i++) {
-        WBToRetire();
-        // instructions in MEM move to WB
-        MEMToWB();
-        // instructions in EX move to MEM (in order) except more than one load or store
-        EXtoMEM();
-        // instructions in ID move to EX (in order) if (1) all dependencies are satisfied; (2) no structural hazards
-        IDToEX();
-        // instructions in IF move to ID if pipeline slots are available (no instructions stalled in ID)
-        IFToID();
-        // read W instructions from trace and store in IF
-        TraceToIF();
+        
     }
 }
 
