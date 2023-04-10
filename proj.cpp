@@ -2,6 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// For opening files
+#include <iostream>
+using std::iostream;
+#include <fstream>
+using std::fstream;
 #include <unordered_map>
 using std::unordered_map;
 
@@ -109,6 +114,10 @@ void deleteDep(long address) {
     delete &depender_Q;
 }
 
+std::ifstream openFile(std::string name) {
+    std::ifstream file(name);
+    return file;
+}
 // Read next instruction from file and return it
 Instruction readNextI() {
     throw;
