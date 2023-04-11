@@ -75,8 +75,9 @@ class Instruction {
         int type; 
         vector<long> deps; // Instructions that I depend on 
         queue<Instruction*> depQ; // Instructions that depend on me
+        unsigned long lineNum;
 
-        Instruction(long, int, vector<long>);
+        Instruction(long, int, unsigned long ,vector<long>);
         bool canMoveNext(Stage); // returns true if instruction can move to the next stage
         void FreeDepQ();
 
@@ -91,9 +92,10 @@ class Instruction {
 };
 
 
-Instruction::Instruction(long address, int type, vector<long> deps) {
+Instruction::Instruction(long address, int type, unsigned long lineNum, vector<long> deps) {
     this->address = address;
     this->type = type;
+    this->lineNum = lineNum;
     this->deps = deps;
 }
 bool Instruction::canMoveNext(Stage next) {
@@ -131,6 +133,9 @@ class PipeLine {
         vector<vector<Instruction*>*> stages;
         unsigned long IDone = 0;
         unsigned long maxI;
+
+        unsigned long nextEXLineNum = 0; // next Instruction (by line) that is allowed to enter EX stage
+        unsigned long nextMEMLineNum = 0; // next Instruction (by line) that is allowed to enter MEM stage
 
         unsigned long clock_cycle = 0; // current clock cycle
         long ITypeCount[5] = {0,0,0,0,0}; // number of each instruction types ran [intI, floatI, branchI, loadI, storeI]
@@ -255,7 +260,8 @@ void PipeLine::moveEX() {
             } 
         }
 
-        if (I->canMoveNext(MEM) && nextStage->size() < W) {
+        if (I->lineNum == nextMEMLineNum && I->canMoveNext(MEM) && nextStage->size() < W) {
+            nextMEMLineNum++;
             nextStage->push_back(I);
             i = IList->erase(i);
 
@@ -280,7 +286,8 @@ void PipeLine::moveID() {
     auto i = IList->begin();
     while (i != IList->end() && nextStage->size() < W) {
         Instruction* I = *i;
-        if (I->canMoveNext(EX)) {
+        if (I->lineNum == nextEXLineNum && I->canMoveNext(EX)) {
+            nextEXLineNum++;
             nextStage->push_back(I);
             i = IList->erase(i);
 
