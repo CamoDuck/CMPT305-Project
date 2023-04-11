@@ -350,7 +350,7 @@ void PipeLine::moveIF() {
     moveTrace();
 }
 void PipeLine::moveTrace() {
-  //  std::cout << "ran7" << std::endl; 
+    // std::cout << "ran7" << std::endl;
     vector<Instruction*>* nextStage = getIF();
     // if current branchs have finishes EX stage && IF stage has space
     while (!branchExist && nextStage->size() < W) {
@@ -386,6 +386,35 @@ void PipeLine::moveTrace() {
         } 
         cout << endl;
     }
+    // if (this->IDone >= 0) {
+    //     cout << getIF()->size() << " " << getID()->size()<< " " << getEX()->size()<< " " << getMEM()->size()<< " " << getWB()->size() << endl;
+    //     auto L = *getIF();
+    //     cout << "-------------------IF" << endl;
+    //     for (unsigned long i = 0; i < L.size(); i++) {
+    //         L[i]->print();
+    //     }
+    //     L = *getID();
+    //     cout << "-------------------ID" <<endl;
+    //     for (unsigned long i = 0; i < L.size(); i++) {
+    //         L[i]->print();
+    //     }
+    //     L = *getEX();
+    //     cout << "-------------------EX" <<endl;
+    //     for (unsigned long i = 0; i < L.size(); i++) {
+    //         L[i]->print();
+    //     } 
+    //     L = *getMEM();
+    //     cout << "-------------------MEM" <<endl;
+    //     for (unsigned long i = 0; i < L.size(); i++) {
+    //         L[i]->print();
+    //     }
+    //     L = *getWB();
+    //     cout << "-------------------WB" <<endl;
+    //     for (unsigned long i = 0; i < L.size(); i++) {
+    //         L[i]->print();
+    //     } 
+    //     cout << endl;
+    // }
 }
 
 
