@@ -28,6 +28,7 @@ enum IType {
     loadI = 4,
     storeI = 5
 };
+
 // two int cant go to EX in the same cycle
 // two float cant go to EX in the same cycle
 // two branch cant go to EX in the same cycle
@@ -37,23 +38,42 @@ enum IType {
 // if instruction is branch, delays IF until brach finishes EX or in MEM=
 // instruction cannot proceed to EX until all its dependencies are satisfied
 
+// current use status of units
+bool ALUOpen = true;
+bool FPUOpen = true;
+bool BranchOpen = true;
+bool ReadOpen = true;
+bool WriteOpen = true;
+
 class Instruction {
     public:
         long address;
         int type; 
-        int stage; // current pipeline stage
         vector<long> deps; // Instructions that I depend on 
         queue<Instruction*> depQ; // Instructions that depend on me
 
         Instruction(long, int, long [], int);
+        bool canMoveNext(Stage); // returns true if instruction can move to the next stage
         void FreeDepQ();
 
 };
 Instruction::Instruction(long address, int type, long deps[], int depsSize) {
     this->address = address;
     this->type = type;
-    this->stage = 0;
     this->deps.insert(this->deps.end(), &deps[0], &deps[depsSize]);
+}
+bool Instruction::canMoveNext(Stage next) {
+    if (next == IF || next == ID || next == WB || next == None) return true;
+    else if (next == EX) {
+        if (type == intI) return ALUOpen && deps.size() == 0;
+        else if (type == floatI) return FPUOpen && deps.size() == 0;
+        else if (type == branchI) return BranchOpen && deps.size() == 0;
+    }
+    else if (next == MEM) {
+        if (type == loadI) return ReadOpen && deps.size() == 0;
+        else if (type == storeI) return WriteOpen && deps.size() == 0;
+    }
+    return false;
 }
 
 // Frees dependecies that were depending on this instruction (called during EX or MEM stage)
@@ -77,15 +97,15 @@ class PipeLine {
         Instruction* getWB() {return IList[4];}
 
         void moveTrace(); // move trace to IF (if possible)
-        void moveIF();  // move IF to ID and calls moveTrace() if it succeeds.
+        void moveIF(); // move IF to ID and calls moveTrace() if it succeeds.
         void moveID(); // move ID to EX and calls moveIF() if it succeeds.
         void moveEX(); // 
         void moveMEM(); // 
         void moveWB(); // 
 
         void tick(); // need to call every clock cycle to update pipeline
-    private:
-        Instruction* IList[5] = {NULL,NULL,NULL,NULL,NULL};;
+    private: 
+        Instruction* IList[5] = {NULL,NULL,NULL,NULL,NULL};
 };
 void PipeLine::tick() {
     moveWB();
@@ -113,11 +133,43 @@ void PipeLine::moveIF() {}
 void PipeLine::moveID() {}
 void PipeLine::moveEX() {}
 
+// W wide pipeline class for controlling the individual pipelines
+class WPipeline {
+    public:
+        vector<PipeLine*> pipelines;
+        long current_cycle = 0;
+        int W;
+
+        WPipeline(int);
+        ~WPipeline();
+        void tick(); // calls tick() on individual pipelines
+};
+WPipeline::WPipeline(int W) {
+    this->W = W;
+    for (int i = 0; i < W; i++) {
+        pipelines.push_back(new PipeLine());
+    }
+}
+WPipeline::~WPipeline() {
+    while (pipelines.size() > 0) {
+        delete pipelines.back();
+        pipelines.pop_back();
+    }
+}
+void WPipeline::tick() {
+    current_cycle++;
+    int length = std::min(current_cycle, (long)W);
+    for (int i = 0; i < length; i++) {
+        pipelines[i]->tick();
+    }
+}
+
+
 
 /////////////////////////////////////
 //        Global Variables         //
 /////////////////////////////////////
-long current_cycle = 0;
+
 long instTypeCount[] = {0,0,0,0,0}; // number of each instruction types ran [intI, floatI, branchI, loadI, storeI]
 
 
@@ -130,12 +182,6 @@ unordered_map<long, queue<Instruction*>*> DepMap; // Dependencies map
     address of "A".
 */ 
 
-// current use status of units
-bool ALUOpen = true;
-bool FPUOpen = true;
-bool BranchOpen = true;
-bool ReadOpen = true;
-bool WriteOpen = true;
 
 /////////////////////////////////////
 //           Functions             //
@@ -224,9 +270,10 @@ void addDep(Instruction &I) {
 
 // Main simulator function
 void Simulation(std::ifstream& ifile, int startInst, int InstNum, int W) {
+    WPipeline* P = new WPipeline(W);
     // instructions in WB retire and leave the pipeline (and the instruction window)
     for(int i = 0; i < 1000; i++) {
-        
+        P->tick();
     }
 }
 
