@@ -52,12 +52,13 @@ class Instruction {
         vector<long> deps; // Instructions that I depend on 
         queue<Instruction*> depQ; // Instructions that depend on me
 
-        Instruction(long, int, long [], int);
+        Instruction(long, int, vector<long>, int);
         bool canMoveNext(Stage); // returns true if instruction can move to the next stage
         void FreeDepQ();
 
 };
-Instruction::Instruction(long address, int type, long deps[], int depsSize) {
+
+Instruction::Instruction(long address, int type, vector<long> deps, int depsSize) {
     this->address = address;
     this->type = type;
     this->deps.insert(this->deps.end(), &deps[0], &deps[depsSize]);
@@ -258,49 +259,34 @@ void addDep(Instruction &I) {
 // }
 
 // Read next instruction from file and return it
-// void readNextWI(std::ifstream& ifile, int W) {
-//     // reads file line by line
-//     // then reads line separated by comma and pushes to vector to read from
-//     for(int i = 0; i < W; i++) {
-//         std::string trace_file_line;
-//         if(!std::getline(ifile, trace_file_line)) break;
+Instruction* readNextI(std::ifstream& ifile) {
+    // reads file line by line
+    // then reads line separated by comma and pushes to vector to read from
+    for(int i = 0; i < 1; i++) {
+        std::string trace_file_line;
+        if(!std::getline(ifile, trace_file_line)) break;
 
-//         std::stringstream ss(trace_file_line);
-//         std::vector<std::string> vect;
-//         while(ss) {
-//             std::string s;
-//             if (!getline(ss, s, ',')) break;
-//             vect.push_back(s);
-//         }
+        std::stringstream ss(trace_file_line);
+        std::vector<std::string> vect;
+        while(ss) {
+            std::string s;
+            if (!getline(ss, s, ',')) break;
+            vect.push_back(s);
+        }
 
-//         // for(std::size_t j = 0; j < vect.size(); j++)
-//         //     std::cout << vect[j] << " ";
+        long address = strtol(vect[0].c_str(), NULL, 16);
+        int type = stoi(vect[1]);
+        vector<long> dependencies;
+        for(std::size_t j = 0; j < vect.size(); j++) {
+            long dep_address = strtol(vect[j].c_str(), NULL, 16);
+            dependencies.push_back(dep_address);
+        }
 
-//         Instruction instruction = Instruction(strtol(vect[0], NULL, 16), stoi(vect[1]), 0, {}, 0);
-//         // move instruction to IF
-        
-//         // std::cout << std::endl;
-//     }
-// }
-
-// Instruction readNextI(std::ifstream& ifile) {
-//     // reads file line by line
-//     // then reads line separated by comma and pushes to vector to read from
-//     vector<Instruction> data;
-//     std::string trace_file_line;
-//     std::getline(ifile, trace_file_line);
-
-//     std::stringstream ss(trace_file_line);
-//     std::vector<std::string> vect;
-//     while(ss) {
-//         std::string s;
-//         if (!getline(ss, s, ',')) break;
-//         vect.push_back(s);
-//     }
-
-//     Instruction instruction = Instruction(strtol(vect[0], NULL, 16), stoi(vect[1]), 0, {}, 0);
-//     return instruction;
-// }
+        Instruction* instruction = new Instruction(address, type, dependencies, 0);
+        return instruction;
+        // move instruction to IF
+    }
+}
 
 // Main simulator function
 void Simulation(std::ifstream& ifile, int startInst, int InstNum, int W) {
