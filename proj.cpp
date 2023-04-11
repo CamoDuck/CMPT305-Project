@@ -99,39 +99,73 @@ class PipeLine {
         void moveTrace(); // move trace to IF (if possible)
         void moveIF(); // move IF to ID and calls moveTrace() if it succeeds.
         void moveID(); // move ID to EX and calls moveIF() if it succeeds.
-        void moveEX(); // 
-        void moveMEM(); // 
-        void moveWB(); // 
+        void moveEX(); // move EX to MEM and calls moveID() if it succeeds.
+        void moveMEM(); // move MEM to WB and calls moveEX() if it succeeds.
+        void moveWB(); // move WB out of system and calls moveMEM() if it succeeds.
 
         void tick(); // need to call every clock cycle to update pipeline
     private: 
+                                // IF,  ID,  EX, MEM,  WB 
         Instruction* IList[5] = {NULL,NULL,NULL,NULL,NULL};
 };
 void PipeLine::tick() {
     moveWB();
 }
 void PipeLine::moveWB() {
-    bool success = false;
-
-    // check for dependencies etc
-
-    if (success) {
+    Instruction* I = getWB();
+    if (I->canMoveNext(None)) {
         moveMEM();
     }
 }
 void PipeLine::moveMEM() {
-    bool success = false;
+    Instruction* I = getMEM();
+    if (I->type == loadI || I->type == storeI) {
+        I->FreeDepQ();
+    }
+    if (I->canMoveNext(WB)) {
 
-    // check for dependencies etc
+        IList[4] = I;
 
-    if (success) {
         moveEX();
     }
 }
-void PipeLine::moveTrace() {}
-void PipeLine::moveIF() {}
-void PipeLine::moveID() {}
-void PipeLine::moveEX() {}
+void PipeLine::moveEX() {
+    Instruction* I = getEX();
+    
+    if (I->type == branchI || I->type == intI || I->type == floatI) {
+        I->FreeDepQ();
+    }
+
+    if (I->canMoveNext(MEM)) {
+        IList[3] = I;
+
+        moveID();
+    }
+}
+void PipeLine::moveID() {
+    Instruction* I = getID();
+
+    if (I->canMoveNext(EX)) {
+        IList[2] = I;
+
+        moveIF();
+    }
+}
+void PipeLine::moveIF() {
+    Instruction* I = getID();
+
+    if (I->canMoveNext(ID)) {
+        IList[1] = I;
+
+        moveTrace();
+    }
+}
+void PipeLine::moveTrace() {
+   
+}
+
+
+
 
 // W wide pipeline class for controlling the individual pipelines
 class WPipeline {
