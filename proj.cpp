@@ -65,6 +65,8 @@ bool BranchOpen = true;
 bool ReadOpen = true;
 bool WriteOpen = true;
 
+bool branchExist = false;
+
 std::ifstream ifile;
 
 Instruction* readNextI(std::ifstream& ifile);
@@ -89,7 +91,7 @@ class Instruction {
         void FreeDepQ();
 
         void print() {
-            std::cout << std::hex << address << " "<< type << " " << deps.size() << std::endl;
+            std::cout << std::hex << address << std::dec << " "<< type << " " << deps.size() << std::endl;
             cout << "[";
             for (unsigned long i = 0; i < deps.size(); i++) {
                 cout << deps[i] << ' ';
@@ -140,11 +142,12 @@ class PipeLine {
         unsigned long W;
         vector<vector<Instruction*>*> stages;
         unsigned long IDone = 0;
+        unsigned long maxI;
 
         unsigned long clock_cycle = 0; // current clock cycle
         long ITypeCount[5] = {0,0,0,0,0}; // number of each instruction types ran [intI, floatI, branchI, loadI, storeI]
 
-        PipeLine(unsigned long);
+        PipeLine(unsigned long, unsigned long);
         ~PipeLine();
 
         vector<Instruction*>* getIF() {return stages.at(0);}
@@ -163,16 +166,24 @@ class PipeLine {
         void tick(); // need to call every clock cycle to update pipeline
         
 };
-PipeLine::PipeLine(unsigned long W) {
+PipeLine::PipeLine(unsigned long W, unsigned long maxI) {
     this->W = W;
+    this->maxI = maxI;
     for (unsigned long i = 0; i < 5; i++) {
         stages.push_back(new vector<Instruction*>);
     }
 }
 PipeLine::~PipeLine() {
     while (stages.size() > 0) {
-        delete stages.back();
+        vector<Instruction*>* curStage = stages.back();
         stages.pop_back();
+
+        while (curStage->size() > 0) {
+            delete curStage->back();
+            curStage->pop_back();
+        }
+
+        delete curStage;
     }
 }
 
@@ -193,6 +204,8 @@ void PipeLine::moveWB() {
             // cout << "leave" << endl;
             IDone++;
             delete I;
+
+            if (IDone == maxI) {return;} // stops pipeline when max instructions are complete
         }
         else {
             i++;
@@ -207,7 +220,7 @@ void PipeLine::moveMEM() {
     vector<Instruction*>* IList = getMEM();
     vector<Instruction*>* nextStage = getWB();
     auto i = IList->begin();
-    while (i != IList->end() && nextStage->size() < W) {
+    while (i != IList->end()) {
         Instruction* I = *i;
         if (I->type == loadI || I->type == storeI) {
             // if (this->IDone > 0) {
@@ -216,9 +229,17 @@ void PipeLine::moveMEM() {
             //     cout << endl;
             // }
             I->FreeDepQ();
+
+            // free up units
+            if (I->type == loadI) {
+                ReadOpen = true;
+            }
+            else if (I->type == storeI) {
+                WriteOpen = true;
+            }
         }
 
-        if (I->canMoveNext(WB)) {
+        if (I->canMoveNext(WB) && nextStage->size() < W) {
             nextStage->push_back(I);
             i = IList->erase(i);
         }
@@ -226,6 +247,8 @@ void PipeLine::moveMEM() {
             i++;
         }
     }
+
+
     moveEX();
 }
 void PipeLine::moveEX() { 
@@ -233,7 +256,7 @@ void PipeLine::moveEX() {
     vector<Instruction*>* IList = getEX();
     vector<Instruction*>* nextStage = getMEM();
     auto i = IList->begin();
-    while (i != IList->end() && nextStage->size() < W) {
+    while (i != IList->end()) {
         Instruction* I = *i;
         //I->print();
         if (I->type == branchI || I->type == intI || I->type == floatI) {
@@ -243,11 +266,31 @@ void PipeLine::moveEX() {
             //     cout << endl;
             // }
             I->FreeDepQ();
+
+            // free up units
+            if (I->type == intI) {
+                ALUOpen = true;
+            }
+            else if (I->type == floatI) {
+                FPUOpen = true;
+            }
+            else if (I->type == branchI) {
+                BranchOpen = true;
+                branchExist = false;
+            } 
         }
 
-        if (I->canMoveNext(MEM)) {
+        if (I->canMoveNext(MEM) && nextStage->size() < W) {
             nextStage->push_back(I);
             i = IList->erase(i);
+
+            // occupy units
+            if (I->type == loadI) {
+                ReadOpen = false;
+            }
+            else if (I->type == storeI) {
+                WriteOpen = false;
+            }
         }
         else {
             i++;
@@ -269,6 +312,17 @@ void PipeLine::moveID() {
             //std::cout << "ran5in2" << std::endl;
             nextStage->push_back(I);
             i = IList->erase(i);
+
+            // occupy units
+            if (I->type == intI) {
+                ALUOpen = false;
+            }
+            else if (I->type == floatI) {
+                FPUOpen = false;
+            }
+            else if (I->type == branchI) {
+                BranchOpen = false;
+            }
         }
         else {
             i++;
@@ -298,18 +352,25 @@ void PipeLine::moveIF() {
 void PipeLine::moveTrace() {
   //  std::cout << "ran7" << std::endl; 
     vector<Instruction*>* nextStage = getIF();
-    while (nextStage->size() < W) {
+    // if current branchs have finishes EX stage && IF stage has space
+    while (!branchExist && nextStage->size() < W) {
         //std::cout << "ran7in" << std::endl;
         Instruction* I = readNextI(ifile);
         if (I == NULL) {
             cout << "END OF FILE" << endl;
             break;
         }
+
+        if (I->type == branchI) {
+            branchExist = true;
+        }
+
         addDep(*I);
         createDep(*I);
         // cout << "trace" << endl;
         nextStage->push_back(I);
     }
+
     if (this->clock_cycle > 5000000) {
         cout << getIF()->size() << " " << getID()->size()<< " " << getEX()->size()<< " " << getMEM()->size()<< " " << getWB()->size() << endl;
 
@@ -386,19 +447,6 @@ void printDep() {
     cout << endl;
 }
 
-// delete dependency tracker (See DepMap for better explanation)
-// void deleteDep(long address) {
-//     if (DepMap.count(address) == 0) {return;} // if key does not exist return
-
-//     queue<Instruction*>* depender_Q = DepMap.at(address);
-//     while (depender_Q->size() != 0) {
-//         Instruction* I = depender_Q->front();
-//         depender_Q->pop();
-//         // get rid of fulfilled dependencies 
-//         I->deps.erase(std::remove(I->deps.begin(), I->deps.end(), address), I->deps.end());
-//     }
-// }
-
 // Read next instruction from file and return it
 Instruction* readNextI(std::ifstream& ifile) {
     // reads file line by line
@@ -437,17 +485,24 @@ Instruction* readNextI(std::ifstream& ifile) {
 
 // Main simulator function
 void Simulation(std::ifstream& ifile, int startInst, int InstNum, int W) {
-    PipeLine* P = new PipeLine(W);
+    PipeLine P = PipeLine(W, InstNum);
     // instructions in WB retire and leave the pipeline (and the instruction window)
     //2778649 2778686
-    while (P->IDone < (unsigned long)InstNum) { 
-        P->tick();
+    while (P.IDone < (unsigned long)InstNum) { 
+        P.tick();
     }
-    std::cout << "clock cycles: " << P->clock_cycle << std::endl;
-    printf("Instruction Types ran : int = %.4f, float = %.4f, branch = %.4f, load = %.4f, store = %.4f\n", 100*P->ITypeCount[0]/(double)InstNum, 100*P->ITypeCount[1]/(double)InstNum, 100*P->ITypeCount[2]/(double)InstNum, 100*P->ITypeCount[3]/(double)InstNum, 100*P->ITypeCount[4]/(double)InstNum);
+    std::cout << "clock cycles: " << P.clock_cycle << std::endl;
+    printf("Instruction Types ran : int = %.4f%%, float = %.4f%%, branch = %.4f%%, load = %.4f%%, store = %.4f%%\n", 
+    ((double)100*P.ITypeCount[0])/InstNum, 
+    ((double)100*P.ITypeCount[1])/InstNum, 
+    ((double)100*P.ITypeCount[2])/InstNum, 
+    ((double)100*P.ITypeCount[3])/InstNum, 
+    ((double)100*P.ITypeCount[4])/InstNum);
+
 }
 
 // example: ./proj sample_trace/compute_fp_1 10000000 1000000 2
+// example: ./proj compute_fp_1 10000000 1000000 2
 int main(int argc, char* argv[]) {
     // input arguments trace file name, starting instruction, instruction count, W
     if(argc == 5){
