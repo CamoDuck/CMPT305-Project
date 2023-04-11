@@ -89,7 +89,7 @@ class Instruction {
         void FreeDepQ();
 
         void print() {
-            std::cout << std::hex << address << " "<< type << " " << deps.size() << std::endl;
+            std::cout << std::hex << address << " "<< type << " " << deps.size() << " ";
             cout << "[";
             for (unsigned long i = 0; i < deps.size(); i++) {
                 cout << deps[i] << ' ';
@@ -295,25 +295,40 @@ void PipeLine::moveIF() {
     moveTrace();
 }
 void PipeLine::moveTrace() {
-  //  std::cout << "ran7" << std::endl; 
+    std::cout << "ran7" << std::endl;
     vector<Instruction*>* nextStage = getIF();
     while (nextStage->size() < W) {
         //std::cout << "ran7in" << std::endl;
         Instruction* I = readNextI(ifile);
+        instructions_read++;
         addDep(*I);
         createDep(*I);
         nextStage->push_back(I);
     }
-    // if (this->IDone > 0) {
+    // if (this->IDone >= 0) {
     //     cout << getIF()->size() << " " << getID()->size()<< " " << getEX()->size()<< " " << getMEM()->size()<< " " << getWB()->size() << endl;
-
     //     auto L = *getIF();
-    //     cout << "IF" << endl;
+    //     cout << "-------------------IF" << endl;
+    //     for (unsigned long i = 0; i < L.size(); i++) {
+    //         L[i]->print();
+    //     }
+    //     L = *getID();
+    //     cout << "-------------------ID" <<endl;
+    //     for (unsigned long i = 0; i < L.size(); i++) {
+    //         L[i]->print();
+    //     }
+    //     L = *getEX();
+    //     cout << "-------------------EX" <<endl;
     //     for (unsigned long i = 0; i < L.size(); i++) {
     //         L[i]->print();
     //     } 
-    //      L = *getID();
-    //     cout << "ID" <<endl;
+    //     L = *getMEM();
+    //     cout << "-------------------MEM" <<endl;
+    //     for (unsigned long i = 0; i < L.size(); i++) {
+    //         L[i]->print();
+    //     }
+    //     L = *getWB();
+    //     cout << "-------------------WB" <<endl;
     //     for (unsigned long i = 0; i < L.size(); i++) {
     //         L[i]->print();
     //     } 
