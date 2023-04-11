@@ -35,16 +35,6 @@ enum IType {
 class Instruction;
 class PipeLine;
 
-// two int cant go to EX in the same cycle
-// two float cant go to EX in the same cycle
-// two branch cant go to EX in the same cycle
-// two load cant go to MEM in the same cycle
-// two store cant go to MEM in the same cycle
-
-// if instruction is branch, delays IF until brach finishes EX or in MEM=
-// instruction cannot proceed to EX until all its dependencies are satisfied
-
-
 /////////////////////////////////////
 //        Global Variables         //
 /////////////////////////////////////
@@ -107,8 +97,6 @@ Instruction::Instruction(long address, int type, vector<long> deps) {
     this->deps = deps;
 }
 bool Instruction::canMoveNext(Stage next) {
-    //this->print();
-    //cout << "stage: " << next-1 << endl;
     if (next == IF || next == ID || next == WB || next == None) return true;
     else if (next == EX) {
         if (type == intI) return ALUOpen && deps.size() == 0;
@@ -164,6 +152,8 @@ class PipeLine {
         void moveWB(); // move WB out of system and calls moveMEM() if it succeeds.
 
         void tick(); // need to call every clock cycle to update pipeline
+
+        void print(); // for testing
         
 };
 PipeLine::PipeLine(unsigned long W, unsigned long maxI) {
@@ -188,12 +178,10 @@ PipeLine::~PipeLine() {
 }
 
 void PipeLine::tick() {
-   // std::cout << "ran1" << std::endl; 
     clock_cycle++;
     moveWB();
 }
 void PipeLine::moveWB() {
-   // std::cout << "ran2" << std::endl; 
     vector<Instruction*>* IList = getWB();
     auto i = IList->begin();
     while (i != IList->end()) {
@@ -201,8 +189,8 @@ void PipeLine::moveWB() {
         if (I->canMoveNext(None)) {
             i = IList->erase(i);
             ITypeCount[I->type - 1]++;
-            // cout << "leave" << endl;
             IDone++;
+            // cout << "HI I AM " << std::hex << I->address << std::dec << " AND I AM DONE" << endl;
             delete I;
 
             if (IDone == maxI) {return;} // stops pipeline when max instructions are complete
@@ -216,18 +204,12 @@ void PipeLine::moveWB() {
         
 }
 void PipeLine::moveMEM() {
- //   std::cout << "ran3" << std::endl; 
     vector<Instruction*>* IList = getMEM();
     vector<Instruction*>* nextStage = getWB();
     auto i = IList->begin();
     while (i != IList->end()) {
         Instruction* I = *i;
         if (I->type == loadI || I->type == storeI) {
-            // if (this->IDone > 0) {
-            //     cout << endl << "FREE:";
-            //     I->print();
-            //     cout << endl;
-            // }
             I->FreeDepQ();
 
             // free up units
@@ -251,20 +233,13 @@ void PipeLine::moveMEM() {
 
     moveEX();
 }
-void PipeLine::moveEX() { 
-   // std::cout << "ran4" << std::endl; 
+void PipeLine::moveEX() {
     vector<Instruction*>* IList = getEX();
     vector<Instruction*>* nextStage = getMEM();
     auto i = IList->begin();
     while (i != IList->end()) {
         Instruction* I = *i;
-        //I->print();
         if (I->type == branchI || I->type == intI || I->type == floatI) {
-            // if (this->IDone > 0) {
-            //     cout << endl << "FREE:";
-            //     I->print();
-            //     cout << endl;
-            // }
             I->FreeDepQ();
 
             // free up units
@@ -300,16 +275,12 @@ void PipeLine::moveEX() {
     moveID();
 }
 void PipeLine::moveID() {
-   // std::cout << "ran5" << std::endl; 
     vector<Instruction*>* IList = getID();
     vector<Instruction*>* nextStage = getEX();
     auto i = IList->begin();
     while (i != IList->end() && nextStage->size() < W) {
-        //std::cout << "ran5in" << std::endl;
         Instruction* I = *i;
-        //I->print();
         if (I->canMoveNext(EX)) {
-            //std::cout << "ran5in2" << std::endl;
             nextStage->push_back(I);
             i = IList->erase(i);
 
@@ -331,12 +302,10 @@ void PipeLine::moveID() {
     moveIF();
 }
 void PipeLine::moveIF() {
-   // std::cout << "ran6" << std::endl; 
     vector<Instruction*>* IList = getIF();
     vector<Instruction*>* nextStage = getID();
     auto i = IList->begin();
-    while (i != IList->end() && nextStage->size() < W) {
-        //std::cout << "ran6in" << std::endl;
+    while (i != IList->end() && nextStage->size() < W) {;
         Instruction* I = *i;
         if (I->canMoveNext(ID)) {
             nextStage->push_back(I);
@@ -350,11 +319,9 @@ void PipeLine::moveIF() {
     moveTrace();
 }
 void PipeLine::moveTrace() {
-    // std::cout << "ran7" << std::endl;
     vector<Instruction*>* nextStage = getIF();
     // if current branchs have finishes EX stage && IF stage has space
     while (!branchExist && nextStage->size() < W) {
-        //std::cout << "ran7in" << std::endl;
         Instruction* I = readNextI(ifile);
         if (I == NULL) {
             cout << "END OF FILE" << endl;
@@ -367,54 +334,37 @@ void PipeLine::moveTrace() {
 
         addDep(*I);
         createDep(*I);
-        // cout << "trace" << endl;
         nextStage->push_back(I);
     }
-
-    if (this->clock_cycle > 5000000) {
-        cout << getIF()->size() << " " << getID()->size()<< " " << getEX()->size()<< " " << getMEM()->size()<< " " << getWB()->size() << endl;
-
-        auto L = *getIF();
-        cout << "IF" << endl;
-        for (unsigned long i = 0; i < L.size(); i++) {
-            L[i]->print();
-        } 
-         L = *getID();
-        cout << "ID" <<endl;
-        for (unsigned long i = 0; i < L.size(); i++) {
-            L[i]->print();
-        } 
-        cout << endl;
+}
+void PipeLine::print() {
+    cout << getIF()->size() << " " << getID()->size()<< " " << getEX()->size()<< " " << getMEM()->size()<< " " << getWB()->size() << endl;
+    auto L = *getIF();
+    cout << "-------------------IF" << endl;
+    for (unsigned long i = 0; i < L.size(); i++) {
+        L[i]->print();
     }
-    // if (this->IDone >= 0) {
-    //     cout << getIF()->size() << " " << getID()->size()<< " " << getEX()->size()<< " " << getMEM()->size()<< " " << getWB()->size() << endl;
-    //     auto L = *getIF();
-    //     cout << "-------------------IF" << endl;
-    //     for (unsigned long i = 0; i < L.size(); i++) {
-    //         L[i]->print();
-    //     }
-    //     L = *getID();
-    //     cout << "-------------------ID" <<endl;
-    //     for (unsigned long i = 0; i < L.size(); i++) {
-    //         L[i]->print();
-    //     }
-    //     L = *getEX();
-    //     cout << "-------------------EX" <<endl;
-    //     for (unsigned long i = 0; i < L.size(); i++) {
-    //         L[i]->print();
-    //     } 
-    //     L = *getMEM();
-    //     cout << "-------------------MEM" <<endl;
-    //     for (unsigned long i = 0; i < L.size(); i++) {
-    //         L[i]->print();
-    //     }
-    //     L = *getWB();
-    //     cout << "-------------------WB" <<endl;
-    //     for (unsigned long i = 0; i < L.size(); i++) {
-    //         L[i]->print();
-    //     } 
-    //     cout << endl;
-    // }
+    L = *getID();
+    cout << "-------------------ID" <<endl;
+    for (unsigned long i = 0; i < L.size(); i++) {
+        L[i]->print();
+    }
+    L = *getEX();
+    cout << "-------------------EX" <<endl;
+    for (unsigned long i = 0; i < L.size(); i++) {
+        L[i]->print();
+    }
+    L = *getMEM();
+    cout << "-------------------MEM" <<endl;
+    for (unsigned long i = 0; i < L.size(); i++) {
+        L[i]->print();
+    }
+    L = *getWB();
+    cout << "-------------------WB" <<endl;
+    for (unsigned long i = 0; i < L.size(); i++) {
+        L[i]->print();
+    }
+    cout << endl;
 }
 
 
@@ -492,11 +442,6 @@ Instruction* readNextI(std::ifstream& ifile) {
             vect.push_back(s);
         }
 
-        // for (unsigned long j = 0; j < vect.size(); j++) {
-        //     std::cout << vect[j] << " ";
-        // }
-        // std::cout << std::endl;
-
         long address = strtol(vect[0].c_str(), NULL, 16);
         int type = stoi(vect[1]);
         vector<long> dependencies;
@@ -512,11 +457,18 @@ Instruction* readNextI(std::ifstream& ifile) {
     return NULL;
 }
 
+// goes to specific line in file
+void gotoLine(std::ifstream& file, int num){
+    file.seekg(std::ios::beg);
+    for(int i=0; i < num - 1; ++i){
+        file.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+    }
+}
+
 // Main simulator function
 void Simulation(std::ifstream& ifile, int startInst, int InstNum, int W) {
     PipeLine P = PipeLine(W, InstNum);
     // instructions in WB retire and leave the pipeline (and the instruction window)
-    //2778649 2778686
     while (P.IDone < (unsigned long)InstNum) { 
         P.tick();
     }
@@ -542,13 +494,14 @@ int main(int argc, char* argv[]) {
 
         ifile.open(file);
 		// Error checks for input variables here, exit if incorrect input
-        if (!ifile.is_open() || startInst < 0 || InstNum < 0 || W <= 0) {
+        if (!ifile.is_open() || startInst < 0 || InstNum < 0 || W < 1 || W > 4) {
             printf("Input Error. Terminating Simulation...\n");
             return 0;
         }
 
 		// Start Simulation
-		printf("Simulating with file = '%s' , startInst = %d, InstNum = %d, W = %d\n", file, startInst, InstNum, W); 
+		printf("Simulating with file = '%s' , startInst = %d, InstNum = %d, W = %d\n", file, startInst, InstNum, W);
+        gotoLine(ifile, startInst);
 		Simulation(ifile, startInst, InstNum, W);
         ifile.close();
 	}
