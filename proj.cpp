@@ -88,7 +88,7 @@ class Instruction {
         void FreeDepQ();
 
         void print() {
-            std::cout << address << " "<< type << " " << deps.size() << std::endl;
+            std::cout << std::hex << address << " "<< type << " " << deps.size() << std::endl;
             cout << "[";
             for (unsigned long i = 0; i < deps.size(); i++) {
                 cout << deps[i] << ' ';
@@ -208,7 +208,7 @@ void PipeLine::moveMEM() {
     while (i != IList->end() && nextStage->size() < W) {
         Instruction* I = *i;
         if (I->type == loadI || I->type == storeI) {
-            if (this->IDone > 2778656) {
+            if (this->IDone > 0) {
                 cout << endl << "FREE:";
                 I->print();
                 cout << endl;
@@ -235,6 +235,11 @@ void PipeLine::moveEX() {
         Instruction* I = *i;
         //I->print();
         if (I->type == branchI || I->type == intI || I->type == floatI) {
+            if (this->IDone > 0) {
+                cout << endl << "FREE:";
+                I->print();
+                cout << endl;
+            }
             I->FreeDepQ();
         }
 
@@ -298,7 +303,7 @@ void PipeLine::moveTrace() {
         createDep(*I);
         nextStage->push_back(I);
     }
-    // if (this->IDone > 2778656) {
+    // if (this->IDone > 0) {
     //     cout << getIF()->size() << " " << getID()->size()<< " " << getEX()->size()<< " " << getMEM()->size()<< " " << getWB()->size() << endl;
 
     //     auto L = *getIF();
@@ -401,7 +406,7 @@ void Simulation(std::ifstream& ifile, int startInst, int InstNum, int W) {
     PipeLine* P = new PipeLine(W);
     // instructions in WB retire and leave the pipeline (and the instruction window)
     //2778649 2778686
-    while (P->IDone < 2778670) { 
+    while (P->IDone < 14) { 
         P->tick();
     }
     std::cout << "clock cycles: " << P->clock_cycle << std::endl;
