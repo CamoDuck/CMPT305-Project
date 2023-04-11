@@ -57,6 +57,8 @@ bool WriteOpen = true;
 
 bool branchExist = false;
 
+int line_num = 1;
+
 std::ifstream ifile;
 
 Instruction* readNextI(std::ifstream& ifile);
@@ -72,7 +74,8 @@ void printDep();
 class Instruction {
     public:
         long address;
-        int type; 
+        int type;
+        unsigned long lineNum;
         vector<long> deps; // Instructions that I depend on 
         queue<Instruction*> depQ; // Instructions that depend on me
         unsigned long lineNum;
@@ -331,7 +334,7 @@ void PipeLine::moveTrace() {
     while (!branchExist && nextStage->size() < W) {
         Instruction* I = readNextI(ifile);
         if (I == NULL) {
-            cout << "END OF FILE" << endl;
+            // cout << "END OF FILE" << endl;
             break;
         }
 
@@ -457,7 +460,7 @@ Instruction* readNextI(std::ifstream& ifile) {
             dependencies.push_back(dep_address);
         }
 
-        Instruction* instruction = new Instruction(address, type, dependencies);
+        Instruction* instruction = new Instruction(address, type, line_num++, dependencies);
         return instruction;
         // move instruction to IF
     }
@@ -501,7 +504,7 @@ int main(int argc, char* argv[]) {
 
         ifile.open(file);
 		// Error checks for input variables here, exit if incorrect input
-        if (!ifile.is_open() || startInst < 0 || InstNum < 0 || W < 1 || W > 4) {
+        if (!ifile.is_open() || startInst <= 0 || InstNum < 0 || W < 1 || W > 4) {
             printf("Input Error. Terminating Simulation...\n");
             return 0;
         }
