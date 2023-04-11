@@ -71,6 +71,7 @@ Instruction* readNextI(std::ifstream& ifile);
 void createDep(Instruction &I);
 void addDep(Instruction &I);
 void deleteDep(Instruction &I);
+void printDep();
 
 /////////////////////////////////////
 //             Classes             //
@@ -339,6 +340,12 @@ void createDep(Instruction &I) {
 
 // add to an existing dependency list (See DepMap for better explanation)
 void addDep(Instruction &I) { 
+    // cout << "HI I AM " << std::hex << I.address << " AND MY DEPENDENCIES ARE ";
+    // for(size_t i = 0; i < I.deps.size(); i++){
+    //     cout << I.deps[i] << " ";
+    // }
+    // cout << endl;
+
     auto i = I.deps.begin();
     while (i != I.deps.end()) {
         long address = *i;
@@ -352,12 +359,45 @@ void addDep(Instruction &I) {
             i = I.deps.erase(i); 
         }
     }
+
+    // printDep();
 }
 
 // delete dependency tracker (See DepMap for better explanation)
 void deleteDep(Instruction &I) {
     DepMap.erase(I.address);
 }
+
+void printDep() {
+    cout << "PRINTING DEP MAP" << endl;
+    for (auto const &pair: DepMap) {
+        std::cout << "{" << std::hex << pair.first << ": ";
+        cout << "[";
+        size_t size = pair.second->size();
+        for(size_t i = 0; i < size; i++) {
+            Instruction* I = pair.second->front();
+            pair.second->pop();
+            cout << I->address << " ";
+            pair.second->push(I);
+        }
+        cout << "]";
+        cout << "}\n";
+    }
+    cout << endl;
+}
+
+// delete dependency tracker (See DepMap for better explanation)
+// void deleteDep(long address) {
+//     if (DepMap.count(address) == 0) {return;} // if key does not exist return
+
+//     queue<Instruction*>* depender_Q = DepMap.at(address);
+//     while (depender_Q->size() != 0) {
+//         Instruction* I = depender_Q->front();
+//         depender_Q->pop();
+//         // get rid of fulfilled dependencies 
+//         I->deps.erase(std::remove(I->deps.begin(), I->deps.end(), address), I->deps.end());
+//     }
+// }
 
 // Read next instruction from file and return it
 Instruction* readNextI(std::ifstream& ifile) {
