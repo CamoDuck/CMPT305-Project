@@ -71,6 +71,7 @@ Instruction* readNextI(std::ifstream& ifile);
 void createDep(Instruction &I);
 void addDep(Instruction &I);
 void deleteDep(Instruction &I);
+void printDep();
 
 /////////////////////////////////////
 //             Classes             //
@@ -333,9 +334,15 @@ void createDep(Instruction &I) {
 
 // add to an existing dependency list (See DepMap for better explanation)
 void addDep(Instruction &I) { 
+    // cout << "HI I AM " << std::hex << I.address << " AND MY DEPENDENCIES ARE ";
+    // for(size_t i = 0; i < I.deps.size(); i++){
+    //     cout << I.deps[i] << " ";
+    // }
+    // cout << endl;
+
     auto i = I.deps.begin();
     while (i != I.deps.end()) {
-        long address = I.deps.at(0);
+        long address = *i;
         // if dependency exists add instruction to it
         if (DepMap.find(address) != DepMap.end()) {
             DepMap.at(address)->push(&I);
@@ -346,10 +353,30 @@ void addDep(Instruction &I) {
             i = I.deps.erase(i); 
         }
     }
+
+    // printDep();
 }
 
 void deleteDep(Instruction &I) {
     DepMap.erase(I.address);
+}
+
+void printDep() {
+    cout << "PRINTING DEP MAP" << endl;
+    for (auto const &pair: DepMap) {
+        std::cout << "{" << std::hex << pair.first << ": ";
+        cout << "[";
+        size_t size = pair.second->size();
+        for(size_t i = 0; i < size; i++) {
+            Instruction* I = pair.second->front();
+            pair.second->pop();
+            cout << I->address << " ";
+            pair.second->push(I);
+        }
+        cout << "]";
+        cout << "}\n";
+    }
+    cout << endl;
 }
 
 // delete dependency tracker (See DepMap for better explanation)
