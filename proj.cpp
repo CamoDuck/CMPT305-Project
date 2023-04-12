@@ -492,13 +492,25 @@ void Simulation(std::ifstream& ifile, int startInst, int InstNum, int W) {
     while (P.IDone < (unsigned long)InstNum) { 
         P.tick();
     }
-    std::cout << "clock cycles: " << P.clock_cycle << std::endl;
-    printf("Instruction Types ran : int = %.4f%%, float = %.4f%%, branch = %.4f%%, load = %.4f%%, store = %.4f%%\n\n", 
+    
+    // csv printing
+    //printf("Start Instruction,cycles,int,float");
+    printf("%i,%li,%.4f%%,%.4f%%,%.4f%%,%.4f%%,%.4f%%\n", 
+    startInst,
+    P.clock_cycle,
     ((double)100*P.ITypeCount[0])/InstNum, 
     ((double)100*P.ITypeCount[1])/InstNum, 
     ((double)100*P.ITypeCount[2])/InstNum, 
     ((double)100*P.ITypeCount[3])/InstNum, 
     ((double)100*P.ITypeCount[4])/InstNum);
+
+    // std::cout << "clock cycles: " << P.clock_cycle << std::endl;
+    // printf("Instruction Types ran : int = %.4f%%, float = %.4f%%, branch = %.4f%%, load = %.4f%%, store = %.4f%%\n\n", 
+    // ((double)100*P.ITypeCount[0])/InstNum, 
+    // ((double)100*P.ITypeCount[1])/InstNum, 
+    // ((double)100*P.ITypeCount[2])/InstNum, 
+    // ((double)100*P.ITypeCount[3])/InstNum, 
+    // ((double)100*P.ITypeCount[4])/InstNum);
 
 }
 
@@ -520,7 +532,7 @@ int main(int argc, char* argv[]) {
         }
 
 		// Start Simulation
-		printf("Simulating with file = '%s' , startInst = %d, InstNum = %d, W = %d\n", file, startInst, InstNum, W);
+		//printf("Simulating with file = '%s' , startInst = %d, InstNum = %d, W = %d\n", file, startInst, InstNum, W);
         gotoLine(ifile, startInst);
 		Simulation(ifile, startInst, InstNum, W);
         ifile.close();
