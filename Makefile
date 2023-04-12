@@ -6,7 +6,6 @@ CXX=g++
 CCFLAGS= -g -std=c++11 -Wall -Werror
 LDLIBS= -lm
 #all: test_list
-all: proj
 
 # Compile all .c files into .o files
 # % matches all (like * in a command)
@@ -14,14 +13,13 @@ all: proj
 %.o : %.cpp
 	$(CXX) -c $(CCFLAGS) $<
 
-
-
 ###################################
 # BEGIN SOLUTION
-proj: proj.o 
-	$(CXX) -o proj proj.o  $(CCFLAGS) $(LDLIBS)
+proj: proj.o Pipeline.o Instruction.o DepMap.o
+	$(CXX) -o proj proj.o Pipeline.o Instruction.o DepMap.o $(CCFLAGS) $(LDLIBS)
 
-
+Pipline.o: Instruction.h DepMap.h
+DepMap.o: Instruction.h
 clean:
 	rm -f core *.o proj
 
