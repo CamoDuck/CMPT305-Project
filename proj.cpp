@@ -57,7 +57,7 @@ bool WriteOpen = true;
 
 bool branchExist = false;
 
-int line_num = 1;
+int line_num = 0;
 
 std::ifstream ifile;
 
@@ -78,7 +78,6 @@ class Instruction {
         unsigned long lineNum;
         vector<long> deps; // Instructions that I depend on 
         queue<Instruction*> depQ; // Instructions that depend on me
-        unsigned long lineNum;
 
         Instruction(long, int, unsigned long ,vector<long>);
         bool canMoveNext(Stage); // returns true if instruction can move to the next stage
@@ -104,14 +103,15 @@ Instruction::Instruction(long address, int type, unsigned long lineNum, vector<l
 bool Instruction::canMoveNext(Stage next) {
     if (next == IF || next == ID || next == WB || next == None) return true;
     else if (next == EX) {
-        if (type == intI) return ALUOpen && deps.size() == 0;
-        else if (type == floatI) return FPUOpen && deps.size() == 0;
-        else if (type == branchI) return BranchOpen && deps.size() == 0;
+        if (deps.size() != 0) return false;
+        else if (type == intI) return ALUOpen;
+        else if (type == floatI) return FPUOpen;
+        else if (type == branchI) return BranchOpen;
         return true;
     }
     else if (next == MEM) {
-        if (type == loadI) return ReadOpen && deps.size() == 0;
-        else if (type == storeI) return WriteOpen && deps.size() == 0;
+        if (type == loadI) return ReadOpen;
+        else if (type == storeI) return WriteOpen;
         return true;
     }
     return false;
@@ -244,40 +244,45 @@ void PipeLine::moveMEM() {
 void PipeLine::moveEX() {
     vector<Instruction*>* IList = getEX();
     vector<Instruction*>* nextStage = getMEM();
-    auto i = IList->begin();
-    while (i != IList->end()) {
-        Instruction* I = *i;
-        if (I->type == branchI || I->type == intI || I->type == floatI) {
-            I->FreeDepQ();
+    int change = 1;
+    while (change != 0) {
+        change = 0;
+        auto i = IList->begin();
+        while (i != IList->end()) {
+            Instruction* I = *i;
+            if (I->type == branchI || I->type == intI || I->type == floatI) {
+                I->FreeDepQ();
 
-            // free up units
-            if (I->type == intI) {
-                ALUOpen = true;
+                // free up units
+                if (I->type == intI) {
+                    ALUOpen = true;
+                }
+                else if (I->type == floatI) {
+                    FPUOpen = true;
+                }
+                else if (I->type == branchI) {
+                    BranchOpen = true;
+                    branchExist = false;
+                } 
             }
-            else if (I->type == floatI) {
-                FPUOpen = true;
-            }
-            else if (I->type == branchI) {
-                BranchOpen = true;
-                branchExist = false;
-            } 
-        }
 
-        if (I->lineNum == nextMEMLineNum && I->canMoveNext(MEM) && nextStage->size() < W) {
-            nextMEMLineNum++;
-            nextStage->push_back(I);
-            i = IList->erase(i);
+            if (I->lineNum == nextMEMLineNum && I->canMoveNext(MEM) && nextStage->size() < W) {
+                nextMEMLineNum++;
+                nextStage->push_back(I);
+                i = IList->erase(i);
+                change++;
 
-            // occupy units
-            if (I->type == loadI) {
-                ReadOpen = false;
+                // occupy units
+                if (I->type == loadI) {
+                    ReadOpen = false;
+                }
+                else if (I->type == storeI) {
+                    WriteOpen = false;
+                }
             }
-            else if (I->type == storeI) {
-                WriteOpen = false;
+            else {
+                i++;
             }
-        }
-        else {
-            i++;
         }
     }
     
@@ -286,27 +291,32 @@ void PipeLine::moveEX() {
 void PipeLine::moveID() {
     vector<Instruction*>* IList = getID();
     vector<Instruction*>* nextStage = getEX();
-    auto i = IList->begin();
-    while (i != IList->end() && nextStage->size() < W) {
-        Instruction* I = *i;
-        if (I->lineNum == nextEXLineNum && I->canMoveNext(EX)) {
-            nextEXLineNum++;
-            nextStage->push_back(I);
-            i = IList->erase(i);
+    int change = 1;
+    while (change != 0) {
+        change = 0;
+        auto i = IList->begin();
+        while (i != IList->end() && nextStage->size() < W) {
+            Instruction* I = *i;
+            if (I->lineNum == nextEXLineNum && I->canMoveNext(EX)) {
+                nextEXLineNum++;
+                nextStage->push_back(I);
+                i = IList->erase(i);
+                change++;
 
-            // occupy units
-            if (I->type == intI) {
-                ALUOpen = false;
+                // occupy units
+                if (I->type == intI) {
+                    ALUOpen = false;
+                }
+                else if (I->type == floatI) {
+                    FPUOpen = false;
+                }
+                else if (I->type == branchI) {
+                    BranchOpen = false;
+                }
             }
-            else if (I->type == floatI) {
-                FPUOpen = false;
+            else {
+                i++;
             }
-            else if (I->type == branchI) {
-                BranchOpen = false;
-            }
-        }
-        else {
-            i++;
         }
     }
     moveIF();
@@ -483,7 +493,7 @@ void Simulation(std::ifstream& ifile, int startInst, int InstNum, int W) {
         P.tick();
     }
     std::cout << "clock cycles: " << P.clock_cycle << std::endl;
-    printf("Instruction Types ran : int = %.4f%%, float = %.4f%%, branch = %.4f%%, load = %.4f%%, store = %.4f%%\n", 
+    printf("Instruction Types ran : int = %.4f%%, float = %.4f%%, branch = %.4f%%, load = %.4f%%, store = %.4f%%\n\n", 
     ((double)100*P.ITypeCount[0])/InstNum, 
     ((double)100*P.ITypeCount[1])/InstNum, 
     ((double)100*P.ITypeCount[2])/InstNum, 
