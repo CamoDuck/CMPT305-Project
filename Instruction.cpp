@@ -9,7 +9,6 @@ Instruction::Instruction(long address, int type, unsigned long line_num, vector<
     this->deps = deps;
 }
 
-// Checks if there are any hazards or dependencies
 bool Instruction::canMoveNext(Stage next, Pipeline* pipeline) {
     if (next == IF || next == ID || next == WB || next == None) return true;
     else if (next == EX) {
@@ -27,8 +26,7 @@ bool Instruction::canMoveNext(Stage next, Pipeline* pipeline) {
     return false;
 }
 
-// Frees dependencies that were depending on this instruction (called during EX or MEM stage)
-void Instruction::FreeDepQ() {
+void Instruction::freeDepQ() {
     while (depQ.size() != 0) {
         Instruction* I = depQ.front();
         depQ.pop();
@@ -48,7 +46,6 @@ void Instruction::print() {
     std::cout << "]"<< std::endl;
 }
 
-// Read next instruction from file and return it
 Instruction* Instruction::readNextI(std::ifstream& ifile, Pipeline* pipeline) {
     // reads file line by line
     // then reads line separated by comma and pushes to vector to read from

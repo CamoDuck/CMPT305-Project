@@ -28,12 +28,7 @@ enum IType {
 class DepMap
 {
 public:
-    static std::ifstream ifile;
-
-    static void createDep(Instruction &I);
-    static void addDep(Instruction &I);
-    static void deleteDep(Instruction &I);
-    static void printDep();
+    static std::ifstream ifile; // The file which data is read from
 
     static unordered_map<long, queue<Instruction*>*> dep_map; // Dependencies map 
     /*  Every time a new instruction (lets call this A) is loaded (IF) its address will be saved as
@@ -43,8 +38,15 @@ public:
     EX or MEM (depending on type of instruction) we will remove all depenecies under key with 
     address of "A".
     */  
-private:
 
+    // Create new dependency tracker (See DepMap for better explanation)
+    static void createDep(Instruction &I);
+    // Add to an existing dependency list (See DepMap for better explanation)
+    static void addDep(Instruction &I);
+    // Delete dependency tracker (See DepMap for better explanation)
+    static void deleteDep(Instruction &I);
+    // Debugging purposes
+    static void print();
 };
 
 #endif

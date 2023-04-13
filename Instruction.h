@@ -4,8 +4,6 @@
 #pragma once
 
 #include <algorithm>
-#include <stdio.h>
-#include <stdlib.h>
 #include <iostream>
 
 #include <vector>
@@ -21,18 +19,27 @@ class Pipeline;
 class Instruction
 {
 public:
-    long address;
-    int type;   // Refer to IType
+    long address; // Hex address of instruction
+    int type; // Refer to IType
     unsigned long line_num; // The order which instruction arrived
     vector<long> deps; // Instructions that I depend on 
     queue<Instruction*> depQ; // Instructions that depend on me
 
+    /*
+    address: address of instruction,
+    type: instruction type (refer to IType),
+    line_num: order which instruction arrived,
+    deps: vector of instruction dependencies
+    */
     Instruction(long, int, unsigned long, vector<long>);
-    bool canMoveNext(Stage, Pipeline*); // returns true if instruction can move to the next stage
-    void FreeDepQ();
 
-    void print(); // Debugging purposes
-
+    // Checks if there are any hazards or dependencies
+    bool canMoveNext(Stage, Pipeline*);
+    // Frees dependencies that were depending on this instruction (called during EX or MEM stage)
+    void freeDepQ();
+    // Debugging purposes
+    void print();
+    // Read next instruction from file and return it
     static Instruction* readNextI(std::ifstream&, Pipeline*);
 };
 

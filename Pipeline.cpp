@@ -58,7 +58,7 @@ void Pipeline::MEMtoWB() {
     while (i != IList->end()) {
         Instruction* I = *i;
         if (I->type == loadI || I->type == storeI) {
-            I->FreeDepQ();
+            I->freeDepQ();
 
             // free up units
             if (I->type == loadI) {
@@ -92,7 +92,7 @@ void Pipeline::EXtoMEM() {
         while (i != IList->end()) {
             Instruction* I = *i;
             if (I->type == branchI || I->type == intI || I->type == floatI) {
-                I->FreeDepQ();
+                I->freeDepQ();
 
                 // free up units
                 if (I->type == intI) {
