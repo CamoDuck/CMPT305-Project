@@ -61,7 +61,6 @@ int line_num = 0;
 
 std::ifstream ifile;
 
-// Function prototypes
 Instruction* readNextI(std::ifstream& ifile);
 void createDep(Instruction &I);
 void addDep(Instruction &I);
@@ -72,12 +71,11 @@ void printDep();
 //             Classes             //
 /////////////////////////////////////
 
-// Represents an Instruction 
 class Instruction {
     public:
         long address;
-        int type;   // Refer to IType
-        unsigned long lineNum; // The order which instruction arrived
+        int type;
+        unsigned long lineNum;
         vector<long> deps; // Instructions that I depend on 
         queue<Instruction*> depQ; // Instructions that depend on me
 
@@ -85,8 +83,16 @@ class Instruction {
         bool canMoveNext(Stage); // returns true if instruction can move to the next stage
         void FreeDepQ();
 
-        void print(); // Debugging purposes
+        void print() {
+            std::cout << std::hex << address << std::dec << " "<< type << " " << deps.size() << std::endl;
+            cout << "[";
+            for (unsigned long i = 0; i < deps.size(); i++) {
+                cout << deps[i] << ' ';
+            }
+            cout << "]"<< endl;
+        }
 };
+
 
 Instruction::Instruction(long address, int type, unsigned long lineNum, vector<long> deps) {
     this->address = address;
@@ -94,7 +100,6 @@ Instruction::Instruction(long address, int type, unsigned long lineNum, vector<l
     this->lineNum = lineNum;
     this->deps = deps;
 }
-// Checks if there are any hazards or dependencies
 bool Instruction::canMoveNext(Stage next) {
     if (next == IF || next == ID || next == WB || next == None) return true;
     else if (next == EX) {
@@ -111,6 +116,7 @@ bool Instruction::canMoveNext(Stage next) {
     }
     return false;
 }
+
 // Frees dependencies that were depending on this instruction (called during EX or MEM stage)
 void Instruction::FreeDepQ() {
     while (depQ.size() != 0) {
@@ -122,22 +128,14 @@ void Instruction::FreeDepQ() {
     }
     deleteDep(*this);
 }
-void Instruction::print() {
-    std::cout << std::hex << address << std::dec << " "<< type << " " << deps.size() << std::endl;
-    cout << "[";
-    for (unsigned long i = 0; i < deps.size(); i++) {
-        cout << deps[i] << ' ';
-    }
-    cout << "]"<< endl;
-}
 
-// Represents a W wide pipeline with 5 stages
+// a single pipeline
 class PipeLine {
     public:
+        unsigned long W;
         vector<vector<Instruction*>*> stages;
-        unsigned long W;    // width of pipeline
-        unsigned long IDone = 0;    // number of instructions completed
-        unsigned long maxI; // max num of instructions to read
+        unsigned long IDone = 0;
+        unsigned long maxI;
 
         unsigned long nextEXLineNum = 0; // next Instruction (by line) that is allowed to enter EX stage
         unsigned long nextMEMLineNum = 0; // next Instruction (by line) that is allowed to enter MEM stage
@@ -186,6 +184,7 @@ PipeLine::~PipeLine() {
         delete curStage;
     }
 }
+
 void PipeLine::tick() {
     clock_cycle++;
     moveWB();
@@ -199,6 +198,7 @@ void PipeLine::moveWB() {
             i = IList->erase(i);
             ITypeCount[I->type - 1]++;
             IDone++;
+            // cout << "HI I AM " << std::hex << I->address << std::dec << " AND I AM DONE" << endl;
             delete I;
 
             if (IDone == maxI) {return;} // stops pipeline when max instructions are complete
@@ -343,8 +343,8 @@ void PipeLine::moveTrace() {
     // if current branchs have finishes EX stage && IF stage has space
     while (!branchExist && nextStage->size() < W) {
         Instruction* I = readNextI(ifile);
-        // file end of line
         if (I == NULL) {
+            // cout << "END OF FILE" << endl;
             break;
         }
 
@@ -400,6 +400,12 @@ void createDep(Instruction &I) {
 
 // add to an existing dependency list (See DepMap for better explanation)
 void addDep(Instruction &I) { 
+    // cout << "HI I AM " << std::hex << I.address << " AND MY DEPENDENCIES ARE ";
+    // for(size_t i = 0; i < I.deps.size(); i++){
+    //     cout << I.deps[i] << " ";
+    // }
+    // cout << endl;
+
     auto i = I.deps.begin();
     while (i != I.deps.end()) {
         long address = *i;
@@ -413,6 +419,8 @@ void addDep(Instruction &I) {
             i = I.deps.erase(i); 
         }
     }
+
+    // printDep();
 }
 
 // delete dependency tracker (See DepMap for better explanation)
@@ -420,7 +428,6 @@ void deleteDep(Instruction &I) {
     DepMap.erase(I.address);
 }
 
-// Debugging purposes
 void printDep() {
     cout << "PRINTING DEP MAP" << endl;
     for (auto const &pair: DepMap) {
@@ -465,6 +472,7 @@ Instruction* readNextI(std::ifstream& ifile) {
 
         Instruction* instruction = new Instruction(address, type, line_num++, dependencies);
         return instruction;
+        // move instruction to IF
     }
     return NULL;
 }
