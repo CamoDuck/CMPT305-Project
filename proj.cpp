@@ -25,14 +25,16 @@ void Simulation(std::ifstream& ifile, long start_inst, long inst_count, int W) {
     while (P.inst_done < (unsigned long)inst_count) { 
         P.tick();
     }
-    std::cout << "clock cycles: " << P.clock_cycle << std::endl;
-    printf("Instruction Types ran : int = %.4f%%, float = %.4f%%, branch = %.4f%%, load = %.4f%%, store = %.4f%%\n\n", 
+    // csv printing
+    //printf("Start Instruction,cycles,int,float");
+    printf("%li,%li,%.4f%%,%.4f%%,%.4f%%,%.4f%%,%.4f%%\n",
+    start_inst,
+    P.clock_cycle,
     ((double)100*P.ITypeCount[0])/inst_count, 
     ((double)100*P.ITypeCount[1])/inst_count, 
     ((double)100*P.ITypeCount[2])/inst_count, 
     ((double)100*P.ITypeCount[3])/inst_count, 
     ((double)100*P.ITypeCount[4])/inst_count);
-
 }
 
 // example: ./proj sample_trace/compute_fp_1 10000000 1000000 2
