@@ -2,7 +2,7 @@
 #include "Instruction.h"
 
 std::ifstream DepMap::ifile;
-unordered_map<long, queue<Instruction*>*> DepMap::dep_map;
+unordered_map<string, queue<Instruction*>*> DepMap::dep_map;
 
 void DepMap::createDep(Instruction &I) {
     dep_map[I.address] = &I.depQ;
@@ -11,7 +11,7 @@ void DepMap::createDep(Instruction &I) {
 void DepMap::addDep(Instruction &I) { 
     auto i = I.deps.begin();
     while (i != I.deps.end()) {
-        long address = *i;
+        string address = *i;
         // if dependency exists add instruction to it
         if (dep_map.find(address) != dep_map.end()) {
             dep_map.at(address)->push(&I);

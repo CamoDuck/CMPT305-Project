@@ -12,6 +12,9 @@ using std::vector;
 #include <queue>
 using std::queue;
 
+#include <string>
+using std::string;
+
 #include "DepMap.h"
 
 class Pipeline;
@@ -19,10 +22,10 @@ class Pipeline;
 class Instruction
 {
 public:
-    long address; // Hex address of instruction
+    string address; // Hex address of instruction
     int type; // Refer to IType
     unsigned long line_num; // The order which instruction arrived
-    vector<long> deps; // Instructions that I depend on 
+    vector<string> deps; // Instructions that I depend on 
     queue<Instruction*> depQ; // Instructions that depend on me
 
     /*
@@ -31,7 +34,7 @@ public:
     line_num: order which instruction arrived,
     deps: vector of instruction dependencies
     */
-    Instruction(long, int, unsigned long, vector<long>);
+    Instruction(string, int, unsigned long, vector<string>);
 
     // Checks if there are any hazards or dependencies
     bool canMoveNext(Stage, Pipeline*);

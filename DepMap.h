@@ -9,6 +9,9 @@ using std::unordered_map;
 #include <queue>
 using std::queue;
 
+#include <string>
+using std::string;
+
 #include <fstream>
 #include <sstream>
 
@@ -30,7 +33,7 @@ class DepMap
 public:
     static std::ifstream ifile; // The file which data is read from
 
-    static unordered_map<long, queue<Instruction*>*> dep_map; // Dependencies map 
+    static unordered_map<string, queue<Instruction*>*> dep_map; // Dependencies map 
     /*  Every time a new instruction (lets call this A) is loaded (IF) its address will be saved as
     key along with an empty queue. Then when ever a new instruction (lets call this B) 
     that has a dependency for instruction "A" is loaded (IF) a pointer to instruction "B"

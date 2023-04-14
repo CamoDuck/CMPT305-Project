@@ -2,7 +2,7 @@
 #include "Pipeline.h"
 #include "DepMap.h"
 
-Instruction::Instruction(long address, int type, unsigned long line_num, vector<long> deps) {
+Instruction::Instruction(string address, int type, unsigned long line_num, vector<string> deps) {
     this->address = address;
     this->type = type;
     this->line_num = line_num;
@@ -61,11 +61,11 @@ Instruction* Instruction::readNextI(std::ifstream& ifile, Pipeline* pipeline) {
             vect.push_back(s);
         }
 
-        long address = strtol(vect[0].c_str(), NULL, 16);
+        string address = vect[0].c_str();
         int type = stoi(vect[1]);
-        vector<long> dependencies;
+        vector<string> dependencies;
         for(std::size_t j = 2; j < vect.size(); j++) {
-            long dep_address = strtol(vect[j].c_str(), NULL, 16);
+            string dep_address = vect[j].c_str();
             dependencies.push_back(dep_address);
         }
 

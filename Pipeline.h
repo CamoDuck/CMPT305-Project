@@ -6,6 +6,9 @@
 #include <vector>
 using std::vector;
 
+#include <string>
+using std::string;
+
 #include "DepMap.h"
 
 class Instruction;
@@ -34,6 +37,7 @@ public:
     bool WriteOpen = true;
 
     bool BranchExist = false;
+    bool BranchInEx = false;
 
     int current_line = 0; // The line number of the instructions read in file input
 

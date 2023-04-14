@@ -20,6 +20,7 @@ void Simulation(std::ifstream& ifile, long start_inst, long inst_count, int W) {
     // instructions in WB retire and leave the pipeline (and the instruction window)
     while (P.inst_done < (unsigned long)inst_count) { 
         P.tick();
+       // P.print(); // remove me ---------------------------------------------------
     }
     // csv printing
     // printf("Start Instruction,cycles,int,float");
@@ -51,7 +52,7 @@ int main(int argc, char* argv[]) {
         }
 
 		// Start Simulation
-		printf("Simulating with trace_file_name = '%s', start_inst = %ld, inst_count = %ld, W = %d\n", trace_file_name, start_inst, inst_count, W);
+		//printf("Simulating with trace_file_name = '%s', start_inst = %ld, inst_count = %ld, W = %d\n", trace_file_name, start_inst, inst_count, W);
         gotoLine(DepMap::ifile, start_inst);
 
 		Simulation(DepMap::ifile, start_inst, inst_count, W);
