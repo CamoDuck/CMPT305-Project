@@ -204,76 +204,32 @@ void Pipeline::traceToIF() {
     }
 }
 
-// remove me
-string toS(Instruction* I) {
-    switch(I->type) {
-        case (intI):
-            return std::to_string(I->line_num+1) + "_A";
-        case (floatI):
-            return  std::to_string(I->line_num+1) + "_F";
-        case (branchI):
-            return  std::to_string(I->line_num+1) + "_B";
-        case (loadI):
-            return  std::to_string(I->line_num+1) + "_L";
-        case (storeI):
-            return  std::to_string(I->line_num+1) + "_S";
-    }
-    return "";
-}
-
 void Pipeline::print() {
-    printf("Cycle: %li\n", clock_cycle);
-    printf("Fetch     Decode    Execute   Memory    WriteBack \n");
-        auto IF = getIF();
-        auto ID = getID();
-        auto EX = getEX();
-        auto MEM = getMEM();
-        auto WB = getWB();
-
-    for (unsigned long i=0; i < W; i++) {
-        printf("%-10s%-10s%-10s%-10s%-10s\n",
-        IF->size() > i? toS(IF->at(i)).c_str(): "",
-        ID->size() > i? toS(ID->at(i)).c_str(): "",
-        EX->size() > i? toS(EX->at(i)).c_str(): "",
-        MEM->size() > i? toS(MEM->at(i)).c_str(): "",
-        WB->size() > i? toS(WB->at(i)).c_str(): "");
+    std::cout << getIF()->size() << " " << getID()->size()<< " " << getEX()->size()<< " " << getMEM()->size()<< " " << getWB()->size() << std::endl;
+    auto L = *getIF();
+    std::cout << "-------------------IF" << std::endl;
+    for (unsigned long i = 0; i < L.size(); i++) {
+        L[i]->print();
     }
-    printf("<<--------------------------------------->>\n");
-
-    // for (auto kv: DepMap) {
-
-        
-    // }
-    
-
-
-
-
-    // std::cout << getIF()->size() << " " << getID()->size()<< " " << getEX()->size()<< " " << getMEM()->size()<< " " << getWB()->size() << std::endl;
-    // auto L = *getIF();
-    // std::cout << "-------------------IF" << std::endl;
-    // for (unsigned long i = 0; i < L.size(); i++) {
-    //     L[i]->print();
-    // }
-    // L = *getID();
-    // std::cout << "-------------------ID" << std::endl;
-    // for (unsigned long i = 0; i < L.size(); i++) {
-    //     L[i]->print();
-    // }
-    // L = *getEX();
-    // std::cout << "-------------------EX" << std::endl;
-    // for (unsigned long i = 0; i < L.size(); i++) {
-    //     L[i]->print();
-    // }
-    // L = *getMEM();
-    // std::cout << "-------------------MEM" << std::endl;
-    // for (unsigned long i = 0; i < L.size(); i++) {
-    //     L[i]->print();
-    // }
-    // L = *getWB();
-    // std::cout << "-------------------WB" << std::endl;
-    // for (unsigned long i = 0; i < L.size(); i++) {
-    //     L[i]->print();
-    // }
-    // std::cout << std::endl;
+    L = *getID();
+    std::cout << "-------------------ID" << std::endl;
+    for (unsigned long i = 0; i < L.size(); i++) {
+        L[i]->print();
+    }
+    L = *getEX();
+    std::cout << "-------------------EX" << std::endl;
+    for (unsigned long i = 0; i < L.size(); i++) {
+        L[i]->print();
+    }
+    L = *getMEM();
+    std::cout << "-------------------MEM" << std::endl;
+    for (unsigned long i = 0; i < L.size(); i++) {
+        L[i]->print();
+    }
+    L = *getWB();
+    std::cout << "-------------------WB" << std::endl;
+    for (unsigned long i = 0; i < L.size(); i++) {
+        L[i]->print();
+    }
+    std::cout << std::endl;
 }

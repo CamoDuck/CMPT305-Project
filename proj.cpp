@@ -20,18 +20,26 @@ void Simulation(std::ifstream& ifile, long start_inst, long inst_count, int W) {
     // instructions in WB retire and leave the pipeline (and the instruction window)
     while (P.inst_done < (unsigned long)inst_count) { 
         P.tick();
-       // P.print(); // remove me ---------------------------------------------------
     }
-    // csv printing
-    // printf("Start Instruction,cycles,int,float");
-    printf("%li,%li,%.4f%%,%.4f%%,%.4f%%,%.4f%%,%.4f%%\n",
-            start_inst,
+
+    printf("cycles = %li, int = %.4f%%, float = %.4f%%, branch = %.4f%%, load = %.4f%%, store = %.4f%%\n",
             P.clock_cycle,
             ((double)100*P.ITypeCount[0])/inst_count,
             ((double)100*P.ITypeCount[1])/inst_count,
             ((double)100*P.ITypeCount[2])/inst_count,
             ((double)100*P.ITypeCount[3])/inst_count,
             ((double)100*P.ITypeCount[4])/inst_count);
+
+    // // csv printing
+    // Start Instruction,cycles,int,float,branch,load,store
+    // printf("%li,%li,%.4f%%,%.4f%%,%.4f%%,%.4f%%,%.4f%%\n",
+    //         start_inst,
+    //         P.clock_cycle,
+    //         ((double)100*P.ITypeCount[0])/inst_count,
+    //         ((double)100*P.ITypeCount[1])/inst_count,
+    //         ((double)100*P.ITypeCount[2])/inst_count,
+    //         ((double)100*P.ITypeCount[3])/inst_count,
+    //         ((double)100*P.ITypeCount[4])/inst_count);
 }
 
 // example: ./proj compute_fp_1 10000000 1000000 2
@@ -52,7 +60,7 @@ int main(int argc, char* argv[]) {
         }
 
 		// Start Simulation
-		//printf("Simulating with trace_file_name = '%s', start_inst = %ld, inst_count = %ld, W = %d\n", trace_file_name, start_inst, inst_count, W);
+		printf("Simulating with trace_file_name = '%s', start_inst = %ld, inst_count = %ld, W = %d\n", trace_file_name, start_inst, inst_count, W);
         gotoLine(DepMap::ifile, start_inst);
 
 		Simulation(DepMap::ifile, start_inst, inst_count, W);
